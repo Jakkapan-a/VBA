@@ -1,8 +1,8 @@
 /*
   Name : Count time to SD card
   Author : Jakkapan Attala
-  Date : 13/03/2023
-  Version : 1.0.0 
+  Date : 14/03/2023
+  Version : 2.0.0
 */
 #include <Arduino.h>
 #include <TM1637Display.h>
@@ -12,19 +12,6 @@
 #include <SD.h>
 #include <DS1302.h>
 
-const uint8_t SEG_P01[] = {
-  SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,          // P
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // 0
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // 0
-  SEG_B | SEG_C,                                  // 1
-};
-
-const uint8_t SEG_P02[] = {
-  SEG_A | SEG_B | SEG_E | SEG_F | SEG_G,          // P
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // 0
-  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // 0
-  SEG_A | SEG_B | SEG_D | SEG_E | SEG_G,          // 2
-};
 
 const uint8_t SEG_WAIT[] = {
   SEG_G,  // -
@@ -32,7 +19,19 @@ const uint8_t SEG_WAIT[] = {
   SEG_G,  // -
   SEG_G,  // -
 };
+const uint8_t SEG_DONE[] = {
+	SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,           // d
+	SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
+	SEG_C | SEG_E | SEG_G,                           // n
+	SEG_A | SEG_D | SEG_E | SEG_F | SEG_G            // E
+	};
 
+const uint8_t SEG_ERROR[] = {
+  SEG_A | SEG_D | SEG_E | SEG_F | SEG_G,  // E
+  SEG_E | SEG_G,  // r
+  SEG_E | SEG_G,  // r
+  SEG_C | SEG_D | SEG_E | SEG_G,  // o
+};
 const uint8_t SEG_[] = {
   0b00000000,  // -
   0b00000000,  // -
@@ -40,12 +39,17 @@ const uint8_t SEG_[] = {
   SEG_G,       // -
 };
 
-// SD Card
+
 #define SD_CS 10
 #define SD_MOSI 11
 #define SD_MISO 12
 #define SD_SCK 13
-File dataFile;
+
+// Ds1302
+#define DATA_PIN 4
+#define CLK_PIN 3
+#define RST_PIN 2
+DS1302 rtc(RST_PIN, DATA_PIN, CLK_PIN);
 
 // TM1637 Display
 #define CLK 5
@@ -87,27 +91,26 @@ void isSensorStopRelease();
 BUTTON sensor_stop(SENSOR_STOP, isSensorStopPress, isSensorStopRelease);
 // LED
 #define LED_STATUS 9  // A6
-
 PINOUT led_status(LED_STATUS, true);
 
-// Ds1302
-#define DATA_PIN 4
-#define CLK_PIN 3
-#define RST_PIN 2
-DS1302 rtc(RST_PIN, DATA_PIN, CLK_PIN);
-Time time;
+
 // Variable
-String _header[4]{ "DateTime", "TimeStart", "TimeEnd", "Time Total(Sec)" };
+String _header[4] { "Date", "TimeStart", "TimeEnd", "Time Total(Sec)" };
 String _dataString[4] = { "55", "55", "55", " 55" };
-String fileName = "";
+String _data_01 = "";
+String _data_02 = "";
+String _data_03 = "";
+String _data_04 = "";
+
 int count_start = 0;
 int current_mode[3] = { 0, 0, 0 };
 uint8_t date = 0;
 uint8_t month = 0;
 uint16_t year = 0;
-uint8_t hour = 0;
+uint8_t hou = 0;
 uint8_t minute = 0;
 uint8_t second = 0;
+
 
 unsigned long period = 500;
 unsigned long last_time_ms = 0;
@@ -115,13 +118,14 @@ unsigned long last_time_ms = 0;
 bool isStarted = false;
 int count_started = 0;
 Time last_time;
-
-void saveFile();
+String filename="Data.csv";
+Time time;
+void saveFile(void);
 void mainMenu(void);
 void subMenu(void);
 int getMonth(String);
 void setBrightnessDisplay(void);
-String getArrayToString(String[], int size);
+String getArrayToString(String[], int);
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
@@ -141,76 +145,108 @@ void setup() {
     }
   }
 
-
   rtc.halt(false);          // Enable RTC clock
   rtc.writeProtect(false);  // Enable write to RTC
-  // rtc.setTime(12, 0, 0);     // Set the time to 12:00:00 (24hr format)
-  // rtc.setDate(11,3, 2023);   // Set the date to August 6th, 2010
-
-  // time = rtc.getTime();
-  // date = time.date;
-  // month = time.mon;
-  // year = time.year;
-  // String filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".csv";
-  // // If file exists, append to it otherwise create a new file add header
-  // //  dataFile = SD.open(filename, FILE_WRITE);
-  // // if (!SD.exists(filename)) {
-  // //   // Serial.println("DATA.txt exists.");
-  // //   String _strs = getArrayToString(_header, 4);
-  // //   dataFile = SD.open(filename, FILE_WRITE);
-  // //   if (dataFile) {
-  // //     dataFile.println(_strs);
-  // //     dataFile.close();
-
-
-  // //     Serial.println("Done.");
-  // //   } else {
-  // //     Serial.println("File not found 1");
-  // //   }
-  // // }
-  // // String _strs = getArrayToString(_dataString, 4);
-  // // dataFile = SD.open(filename, FILE_WRITE);
-  // // if (dataFile) {
-  // //   dataFile.println(_strs);
-  // //   dataFile.close();
-  // //   Serial.println("Done 2.");
-  // // } else {
-  // //   Serial.println("File not found 2");
-  // // }
-
-
-
   time = rtc.getTime();
-  // last_time = time;
+  filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".csv";
+
+  // if(!SD.exists(filename)){
+  //   File data = SD.open(filename, FILE_WRITE);
+  //   if(data){
+  //     data.println(getArrayToString(_header, 4));
+  //     data.close();
+  //     Serial.println("File created");
+  //   }else{
+  //     Serial.println("Error open file");
+  //      for(int i = 0; i < 5; i++){
+  //     display.setBrightness(5, true);
+  //     display.setSegments(SEG_ERROR);
+  //     delay(50);
+  //     display.setBrightness(0, false);
+  //     display.setSegments(SEG_ERROR);
+  //     delay(50);
+  //     }
+  //   display.setBrightness(5, true);
+  //   display.setSegments(SEG_ERROR);
+  //   }
+  // }
   led_status.off();
   Serial.println(getArrayToString(_header, 4));
   Serial.println("Setup complete");
   display.showNumberDec(0, false, 4, 0);
 }
-
-
+bool isSave = false;
 void loop() {
-  if (led_status.isOn()) {
-    time = rtc.getTime();
-    if (time.sec != last_time.sec) {
-      last_time = time;
-      count_start++;
-      display.showNumberDec(count_start, false, 4, 0);
-    }
-  }
+if (led_status.isOn()) {
+   time = rtc.getTime();
+   if (time.sec != last_time.sec) {
+     last_time = time;
+     count_start++;
+     display.showNumberDec(count_start, false, 4, 0);
+   }
+ }
 
-  button_esc.update();
-  button_up.update();
-  button_down.update();
-  button_enter.update();
-  sensor_start.update();
-  sensor_stop.update();
-  mainMenu();
-  if (count_started < 100) {
-    count_started++;
-  } else if (!isStarted) {
-    isStarted = true;
-  }
+ button_esc.update();
+ button_up.update();
+ button_down.update();
+ button_enter.update();
+ sensor_start.update();
+ sensor_stop.update();
+ mainMenu();
+ if (count_started < 100) {
+   count_started++;
+ } else if (!isStarted) {
+   isStarted = true;
+ }
+
+if(isSave){
+  Serial.println(rtc.getDateStr());
+  _data_01 = rtc.getDateStr();
+  _data_03 = rtc.getTimeStr();
+  _data_04 = String(count_start);
+  Serial.println("Data 01 : " + _data_01);
+  Serial.println("Data 03 : " + _data_03);
+  Serial.println("Data 04 : " + _data_04);
+  // saveFile();
+    String sa = _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04;
+    // Serial.println("Writing to data file...  : "+  _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04);
+    File dataFile = SD.open(filename, FILE_WRITE);
+    if (dataFile) {
+      dataFile.println(sa);
+      dataFile.close();
+      Serial.println("Done!.");
+      for(int i = 0; i < 5; i++){
+      display.setBrightness(5, true);
+      display.setSegments(SEG_DONE);
+      delay(50);
+      display.setBrightness(0, false);
+      display.setSegments(SEG_DONE);
+      delay(50);
+     }
+    display.setBrightness(5, true);
+    display.setSegments(SEG_DONE);
+    } else {
+      Serial.println("File not found!");
+      for(int i = 0; i < 5; i++){
+      display.setBrightness(5, true);
+      display.setSegments(SEG_ERROR);
+      delay(50);
+      display.setBrightness(0, false);
+      display.setSegments(SEG_ERROR);
+      delay(50);
+      }
+    display.setBrightness(5, true);
+    display.setSegments(SEG_ERROR);
+    }
+
+
+  isSave = false;
+}
+  // String dataString = "Hello World!";
+
+
+  // // wait 1 seconds before taking the next reading:
+  // delay(1000);
 }
 
 void mainMenu() {
@@ -223,11 +259,12 @@ void mainMenu() {
     case 1:
       // F001 Mode Setting Date Time
       // SubMenu
+      
       switch (current_mode[1]) {
         case 0:
           // 0 DATE
           if (current_mode[2] == 0) {
-            display.showNumberHexEx(0xF000);
+           display.showNumberHexEx(0xF000);
 
           } else if (current_mode[2] == 1) {
             // Display Date
@@ -235,14 +272,14 @@ void mainMenu() {
             date = time.date;
             month = time.mon;
             year = time.year;
-            Serial.print("Date : ");
-            Serial.println(date);
-            Serial.print("Month : ");
-            Serial.println(month);
-            Serial.print("Year : ");
-            Serial.println(year);
+            // Serial.print("Date : ");
+            // Serial.println(date);
+            // Serial.print("Month : ");
+            // Serial.println(month);
+            // Serial.print("Year : ");
+            // Serial.println(year);
             current_mode[2] += 1;
-            Serial.print("CUrr : ");
+            // Serial.print("CUrr : ");
             Serial.println(current_mode[2]);
             display.clear();
           } else if (current_mode[2] == 2) {
@@ -266,26 +303,29 @@ void mainMenu() {
           break;
         case 1:
           // 1 Time
+          
           if (current_mode[2] == 0) {
             display.showNumberHexEx(0xF001);
           } else if (current_mode[2] == 1) {
             // Get time
             time = rtc.getTime();
-            hour = time.hour;
+            hou = time.hour;
             minute = time.min;
             second = time.sec;
-            Serial.print("Hour : ");
-            Serial.println(hour);
-            Serial.print("Minute : ");
-            Serial.println(minute);
-            Serial.print("Second : ");
-            Serial.println(second);
+            // Serial.print("h : ");
+            // Serial.println(hou);
+            // Serial.print("Minute : ");
+            // Serial.println(minute);
+            // Serial.print("Second : ");
+            // Serial.println(second);
             current_mode[2] += 1;
             display.clear();
-          } else if (current_mode[2] == 2) {
+          } else
+          
+           if (current_mode[2] == 2) {
             // Display Hour
             setBrightnessDisplay();
-            display.showNumberDec(hour, false, 4, 0);
+            display.showNumberDec(hou, false, 4, 0);
           } else if (current_mode[2] == 3) {
             // Display Minute
             setBrightnessDisplay();
@@ -295,13 +335,15 @@ void mainMenu() {
             setBrightnessDisplay();
             display.showNumberDec(second, false, 4, 0);
           } else {
-            rtc.setTime(hour, minute, second);
+            rtc.setTime(hou, minute, second);
             current_mode[2] = 0;
             Serial.println("Set Time Complete");
           }
+          
           break;
         case 2:
           // 2 Name
+          current_mode[1] = 0;
           if (current_mode[2] == 0) {
             display.showNumberHexEx(0xF002);
           }
@@ -310,12 +352,14 @@ void mainMenu() {
           current_mode[1] = 0;
           break;
       }
+      
       break;
     default:
       current_mode[0] = 0;
       break;
   }
 }
+
 void isButtonPressESC() {
   Serial.println("Button ESC pressed!");
   if (current_mode[0] == 1 && current_mode[1] == 0 && current_mode[2] == 0) {
@@ -367,11 +411,11 @@ void isButtonPressDOWN() {
   }
   // Time
   else if (current_mode[0] == 1 && current_mode[1] == 1 && current_mode[2] == 2) {
-    hour -= 1;
-    if (hour < 0 || hour > 23) {
-      hour = 23;
+    hou -= 1;
+    if (hou < 0 || hou > 23) {
+      hou = 23;
     }
-    Serial.println(hour);
+    Serial.println(hou);
   } else if (current_mode[0] == 1 && current_mode[1] == 1 && current_mode[2] == 3) {
     minute -= 1;
     if (minute < 0 || minute > 59) {
@@ -406,9 +450,9 @@ void isButtonPressUP() {
   }
   // Time
   else if (current_mode[0] == 1 && current_mode[1] == 1 && current_mode[2] == 2) {
-    hour += 1;
-    if (hour > 23) {
-      hour = 0;
+    hou += 1;
+    if (hou > 23) {
+      hou = 0;
     }
   } else if (current_mode[0] == 1 && current_mode[1] == 1 && current_mode[2] == 3) {
     minute += 1;
@@ -425,6 +469,11 @@ void isButtonPressUP() {
 
 void isButtonPressENTER() {
   Serial.println("Button ENTER pressed!");
+  if (led_status.isOn()){
+    // led_status.off();
+    // isSave = true;
+    return;
+  }
   if (current_mode[0] == 0) {
     current_mode[0] = 1;
     current_mode[1] = 0;
@@ -439,7 +488,7 @@ void isButtonPressENTER() {
 }
 
 void isSensorStartPress() {
-  Serial.println("Sensor Start pressed!");
+  // Serial.println("Sensor Start pressed!");
 }
 
 void isSensorStartRelease() {
@@ -455,6 +504,8 @@ void isSensorStartRelease() {
   Serial.println(led_status.isOn());
   count_start = -1;
   _dataString[1] = rtc.getTimeStr();
+  _data_02 = rtc.getTimeStr();
+  Serial.println("Data 02 :" + _data_02);
 }
 
 void isSensorStopPress() {
@@ -469,13 +520,13 @@ void isSensorStopPress() {
   Serial.print("Status LED: ");
   Serial.println(led_status.isOn());
 
-  // Serial.println(rtc.getDateStr());
-  String dt = rtc.getDateStr();
-  //
-  _dataString[0] = dt + " " + rtc.getTimeStr();
-  _dataString[2] = rtc.getTimeStr();
-  _dataString[3] = String(count_start);
-  saveFile();
+  isSave = true;
+  
+  // saveFile();
+
+ 
+
+
 }
 
 void isSensorStopRelease() {
@@ -506,5 +557,11 @@ String getArrayToString(String arr[], int size) {
   }
   return str;
 }
-void saveFile() {
+
+void saveFile(){
+  time = rtc.getTime();
+  String filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".txt";
+  // If file exists, append to it otherwise create a new file add header
+  // dataFile.close();
+  
 }

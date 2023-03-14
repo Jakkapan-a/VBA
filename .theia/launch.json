@@ -5,14 +5,17 @@
   "configurations": [
     
     {
-      "cwd": "${workspaceFolder}",
-      "executable": "./bin/executable.elf",
-      "name": "Debug with ST-Link",
+      "cwd": "${workspaceRoot}",
+      "name": "Arduino",
       "request": "launch",
       "type": "cortex-debug",
-      "runToEntryPoint": "main",
-      "showDevDebugOutput": "none",
-      "servertype": "stlink"
+      "executable": "/var/folders/l6/28chlnbn66b1nflyprjgv26h0000gn/T/arduino-sketch-A95360DDCF796B5109E9A069DBF3E5C9/Blink_copy_20201217101132.ino.elf",
+      "servertype": "openocd",
+      "serverpath": "/Users/sundeqing/Library/Arduino15/packages/arduino/tools/openocd/0.10.0-arduino7/bin/openocd",
+      "armToolchainPath": "/Users/sundeqing/Library/Arduino15/packages/arduino/tools/arm-none-eabi-gcc/7-2017q4/bin/",
+      "configFiles": [
+        "/Users/sundeqing/Library/Arduino15/packages/arduino/hardware/samd/1.8.10/variants/arduino_mzero/openocd_scripts/arduino_zero.cfg"
+      ]
     }
   ]
 }

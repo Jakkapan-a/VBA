@@ -20,17 +20,17 @@ const uint8_t SEG_WAIT[] = {
   SEG_G,  // -
 };
 const uint8_t SEG_DONE[] = {
-	SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,           // d
-	SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,   // O
-	SEG_C | SEG_E | SEG_G,                           // n
-	SEG_A | SEG_D | SEG_E | SEG_F | SEG_G            // E
-	};
+  SEG_B | SEG_C | SEG_D | SEG_E | SEG_G,          // d
+  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,  // O
+  SEG_C | SEG_E | SEG_G,                          // n
+  SEG_A | SEG_D | SEG_E | SEG_F | SEG_G           // E
+};
 
 const uint8_t SEG_ERROR[] = {
   SEG_A | SEG_D | SEG_E | SEG_F | SEG_G,  // E
-  SEG_E | SEG_G,  // r
-  SEG_E | SEG_G,  // r
-  SEG_C | SEG_D | SEG_E | SEG_G,  // o
+  SEG_E | SEG_G,                          // r
+  SEG_E | SEG_G,                          // r
+  SEG_C | SEG_D | SEG_E | SEG_G,          // o
 };
 const uint8_t SEG_[] = {
   0b00000000,  // -
@@ -95,7 +95,7 @@ PINOUT led_status(LED_STATUS, true);
 
 
 // Variable
-String _header[4] { "Date", "TimeStart", "TimeEnd", "Time Total(Sec)" };
+String _header[4]{ "Date", "TimeStart", "TimeEnd", "Time Total(Sec)" };
 String _dataString[4] = { "55", "55", "55", " 55" };
 String _data_01 = "";
 String _data_02 = "";
@@ -112,18 +112,22 @@ uint8_t minute = 0;
 uint8_t second = 0;
 
 
-unsigned long period = 500;
+int period = 500;
 unsigned long last_time_ms = 0;
+unsigned long last_time_cs = 0;
 
 bool isStarted = false;
+bool isReady = false;
+int count_Ready = 0;
 int count_started = 0;
 Time last_time;
-String filename="Data.csv";
+String filename = "Data.csv";
 Time time;
 void saveFile(void);
 void mainMenu(void);
 void subMenu(void);
 int getMonth(String);
+void mainTimer(void);
 void setBrightnessDisplay(void);
 String getArrayToString(String[], int);
 void setup() {
@@ -177,37 +181,39 @@ void setup() {
 }
 bool isSave = false;
 void loop() {
-if (led_status.isOn()) {
-   time = rtc.getTime();
-   if (time.sec != last_time.sec) {
-     last_time = time;
-     count_start++;
-     display.showNumberDec(count_start, false, 4, 0);
-   }
- }
+  if (led_status.isOn()) {
+    time = rtc.getTime();
 
- button_esc.update();
- button_up.update();
- button_down.update();
- button_enter.update();
- sensor_start.update();
- sensor_stop.update();
- mainMenu();
- if (count_started < 100) {
-   count_started++;
- } else if (!isStarted) {
-   isStarted = true;
- }
+    if (time.sec != last_time.sec) {
+      last_time = time;
+      count_start++;
+      display.showNumberDec(count_start, false, 4, 0);
+    }
+  }
 
-if(isSave){
-  Serial.println(rtc.getDateStr());
-  _data_01 = rtc.getDateStr();
-  _data_03 = rtc.getTimeStr();
-  _data_04 = String(count_start);
-  Serial.println("Data 01 : " + _data_01);
-  Serial.println("Data 03 : " + _data_03);
-  Serial.println("Data 04 : " + _data_04);
-  // saveFile();
+  button_esc.update();
+  button_up.update();
+  button_down.update();
+  button_enter.update();
+  sensor_start.update();
+  sensor_stop.update();
+  mainMenu();
+  mainTimer();
+  if (count_started < 100) {
+    count_started++;
+  } else if (!isStarted) {
+    isStarted = true;
+  }
+
+  if (isSave) {
+    Serial.println(rtc.getDateStr());
+    _data_01 = rtc.getDateStr();
+    _data_03 = rtc.getTimeStr();
+    _data_04 = String(count_start);
+    Serial.println("Data 01 : " + _data_01);
+    Serial.println("Data 03 : " + _data_03);
+    Serial.println("Data 04 : " + _data_04);
+    // saveFile();
     String sa = _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04;
     // Serial.println("Writing to data file...  : "+  _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04);
     File dataFile = SD.open(filename, FILE_WRITE);
@@ -215,40 +221,49 @@ if(isSave){
       dataFile.println(sa);
       dataFile.close();
       Serial.println("Done!.");
-      for(int i = 0; i < 5; i++){
+      for (int i = 0; i < 5; i++) {
+        display.setBrightness(5, true);
+        display.setSegments(SEG_DONE);
+        delay(50);
+        display.setBrightness(0, false);
+        display.setSegments(SEG_DONE);
+        delay(50);
+      }
       display.setBrightness(5, true);
       display.setSegments(SEG_DONE);
-      delay(50);
-      display.setBrightness(0, false);
-      display.setSegments(SEG_DONE);
-      delay(50);
-     }
-    display.setBrightness(5, true);
-    display.setSegments(SEG_DONE);
     } else {
       Serial.println("File not found!");
-      for(int i = 0; i < 5; i++){
+      for (int i = 0; i < 5; i++) {
+        display.setBrightness(5, true);
+        display.setSegments(SEG_ERROR);
+        delay(50);
+        display.setBrightness(0, false);
+        display.setSegments(SEG_ERROR);
+        delay(50);
+      }
       display.setBrightness(5, true);
       display.setSegments(SEG_ERROR);
-      delay(50);
-      display.setBrightness(0, false);
-      display.setSegments(SEG_ERROR);
-      delay(50);
-      }
-    display.setBrightness(5, true);
-    display.setSegments(SEG_ERROR);
     }
-
-
-  isSave = false;
+    count_Ready = 0;
+    isReady = true;
+    isSave = false;
+  }
 }
-  // String dataString = "Hello World!";
-
-
-  // // wait 1 seconds before taking the next reading:
-  // delay(1000);
+void mainTimer() {
+  if (millis() - last_time_cs >= 1000) {
+    if (isReady) {
+      count_Ready++;
+      if (count_Ready >= 10) {
+        isReady = false;
+        count_Ready = 0;
+        display.showNumberDec(0, false, 4, 0);
+      }
+      last_time_cs = millis();
+    } else if (millis() < 1000) {
+      last_time_cs = millis();
+    }
+  }
 }
-
 void mainMenu() {
   // Display
   switch (current_mode[0]) {
@@ -259,12 +274,12 @@ void mainMenu() {
     case 1:
       // F001 Mode Setting Date Time
       // SubMenu
-      
+
       switch (current_mode[1]) {
         case 0:
           // 0 DATE
           if (current_mode[2] == 0) {
-           display.showNumberHexEx(0xF000);
+            display.showNumberHexEx(0xF000);
 
           } else if (current_mode[2] == 1) {
             // Display Date
@@ -303,7 +318,7 @@ void mainMenu() {
           break;
         case 1:
           // 1 Time
-          
+
           if (current_mode[2] == 0) {
             display.showNumberHexEx(0xF001);
           } else if (current_mode[2] == 1) {
@@ -321,8 +336,8 @@ void mainMenu() {
             current_mode[2] += 1;
             display.clear();
           } else
-          
-           if (current_mode[2] == 2) {
+
+            if (current_mode[2] == 2) {
             // Display Hour
             setBrightnessDisplay();
             display.showNumberDec(hou, false, 4, 0);
@@ -339,7 +354,7 @@ void mainMenu() {
             current_mode[2] = 0;
             Serial.println("Set Time Complete");
           }
-          
+
           break;
         case 2:
           // 2 Name
@@ -352,7 +367,7 @@ void mainMenu() {
           current_mode[1] = 0;
           break;
       }
-      
+
       break;
     default:
       current_mode[0] = 0;
@@ -366,7 +381,7 @@ void isButtonPressESC() {
     current_mode[0] = 0;
     current_mode[1] = 0;
     current_mode[2] = 0;
-  display.showNumberDec(0, false, 4, 0);
+    display.showNumberDec(0, false, 4, 0);
 
   } else if (current_mode[0] == 1 && current_mode[1] == 0 && current_mode[2] != 0) {
     current_mode[2] = 0;
@@ -378,12 +393,8 @@ void isButtonPressESC() {
     current_mode[0] = 0;
     current_mode[1] = 0;
     current_mode[2] = 0;
-  display.showNumberDec(0, false, 4, 0);
-
+    display.showNumberDec(0, false, 4, 0);
   }
-
-
-
   display.setBrightness(5);
 }
 
@@ -469,7 +480,7 @@ void isButtonPressUP() {
 
 void isButtonPressENTER() {
   Serial.println("Button ENTER pressed!");
-  if (led_status.isOn()){
+  if (led_status.isOn()) {
     // led_status.off();
     // isSave = true;
     return;
@@ -506,6 +517,7 @@ void isSensorStartRelease() {
   _dataString[1] = rtc.getTimeStr();
   _data_02 = rtc.getTimeStr();
   Serial.println("Data 02 :" + _data_02);
+  isReady = false;
 }
 
 void isSensorStopPress() {
@@ -521,12 +533,8 @@ void isSensorStopPress() {
   Serial.println(led_status.isOn());
 
   isSave = true;
-  
+
   // saveFile();
-
- 
-
-
 }
 
 void isSensorStopRelease() {
@@ -558,10 +566,9 @@ String getArrayToString(String arr[], int size) {
   return str;
 }
 
-void saveFile(){
+void saveFile() {
   time = rtc.getTime();
   String filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".txt";
   // If file exists, append to it otherwise create a new file add header
   // dataFile.close();
-  
 }

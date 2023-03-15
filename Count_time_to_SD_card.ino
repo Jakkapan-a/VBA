@@ -90,7 +90,7 @@ void isSensorStopPress();
 void isSensorStopRelease();
 BUTTON sensor_stop(SENSOR_STOP, isSensorStopPress, isSensorStopRelease);
 // LED
-#define LED_STATUS 9  // A6
+#define LED_STATUS 9  // 9
 PINOUT led_status(LED_STATUS, true);
 
 
@@ -180,8 +180,9 @@ void setup() {
   display.showNumberDec(0, false, 4, 0);
 }
 bool isSave = false;
+bool isRecord = false;
 void loop() {
-  if (led_status.isOn()) {
+  if (isRecord) {
     time = rtc.getTime();
 
     if (time.sec != last_time.sec) {
@@ -233,14 +234,16 @@ void loop() {
       display.setSegments(SEG_DONE);
     } else {
       Serial.println("File not found!");
-      for (int i = 0; i < 5; i++) {
+      for (int i = 0; i < 10; i++) {
         display.setBrightness(5, true);
         display.setSegments(SEG_ERROR);
         delay(50);
         display.setBrightness(0, false);
         display.setSegments(SEG_ERROR);
         delay(50);
+        led_status.on();
       }
+      led_status.off();
       display.setBrightness(5, true);
       display.setSegments(SEG_ERROR);
     }
@@ -480,7 +483,8 @@ void isButtonPressUP() {
 
 void isButtonPressENTER() {
   Serial.println("Button ENTER pressed!");
-  if (led_status.isOn()) {
+  // if (led_status.isOn()) {
+    if(isRecord){
     // led_status.off();
     // isSave = true;
     return;
@@ -504,13 +508,14 @@ void isSensorStartPress() {
 
 void isSensorStartRelease() {
   Serial.println("Sensor Start released!");
-  if (led_status.isOn() || !isStarted) {
+  if (isRecord || !isStarted) {
     return;
   } else if (current_mode[0] != 0 || current_mode[1] != 0 || current_mode[2] != 0) {
     return;
   }
 
-  led_status.on();
+  isRecord = true;
+  // led_status.on();
   Serial.print("Status LED: ");
   Serial.println(led_status.isOn());
   count_start = -1;
@@ -523,16 +528,17 @@ void isSensorStartRelease() {
 void isSensorStopPress() {
   Serial.println("Sensor Stop pressed!");
   //  led_status.off();
-  if (!led_status.isOn() || !isStarted) {
+  if (!isRecord || !isStarted) {
     return;
   } else if (current_mode[0] != 0 || current_mode[1] != 0 || current_mode[2] != 0) {
     return;
   }
-  led_status.off();
-  Serial.print("Status LED: ");
-  Serial.println(led_status.isOn());
+  // led_status.off();
+  // Serial.print("Status LED: ");
+  // Serial.println(led_status.isOn());
 
   isSave = true;
+  isRecord = false;
 
   // saveFile();
 }

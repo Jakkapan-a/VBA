@@ -6,7 +6,7 @@
 */
 #include <Arduino.h>
 #include <TM1637Display.h>
-#include <BUTTON.h>
+#include <TcBUTTON.h>
 #include <PINOUT.h>
 #include <SPI.h>
 #include <SD.h>
@@ -64,31 +64,31 @@ TM1637Display display(CLK, DIO);
 
 void isButtonPressESC();
 void isButtonReleaseESC();
-BUTTON button_esc(BUTTON_ESC, isButtonPressESC, NULL);
+TcBUTTON button_esc(BUTTON_ESC, isButtonPressESC, NULL);
 
 
 void isButtonPressDOWN();
 void isButtonReleaseDOWN();
-BUTTON button_down(BUTTON_DOWN, isButtonPressDOWN, NULL);
+TcBUTTON button_down(BUTTON_DOWN, isButtonPressDOWN, NULL);
 
 void isButtonPressUP();
 void isButtonReleaseUP();
-BUTTON button_up(BUTTON_UP, isButtonPressUP, NULL);
+TcBUTTON button_up(BUTTON_UP, isButtonPressUP, NULL);
 
 void isButtonPressENTER();
 void isButtonReleaseENTER();
-BUTTON button_enter(BUTTON_ENTER, isButtonPressENTER, NULL);
+TcBUTTON button_enter(BUTTON_ENTER, isButtonPressENTER, NULL);
 // Sensor
 #define SENSOR_START 7  //
 #define SENSOR_STOP 8   //
 
 void isSensorStartPress();
 void isSensorStartRelease();
-BUTTON sensor_start(SENSOR_START, isSensorStartPress, isSensorStartRelease);
+TcBUTTON sensor_start(SENSOR_START, isSensorStartPress, isSensorStartRelease);
 
 void isSensorStopPress();
 void isSensorStopRelease();
-BUTTON sensor_stop(SENSOR_STOP, isSensorStopPress, isSensorStopRelease);
+TcBUTTON sensor_stop(SENSOR_STOP, isSensorStopPress, isSensorStopRelease);
 // LED
 #define LED_STATUS 9  // 9
 PINOUT led_status(LED_STATUS, true);

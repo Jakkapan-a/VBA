@@ -111,7 +111,6 @@ uint8_t hou = 0;
 uint8_t minute = 0;
 uint8_t second = 0;
 
-
 int period = 500;
 unsigned long last_time_ms = 0;
 unsigned long last_time_cs = 0;
@@ -154,26 +153,6 @@ void setup() {
   time = rtc.getTime();
   filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".csv";
 
-  // if(!SD.exists(filename)){
-  //   File data = SD.open(filename, FILE_WRITE);
-  //   if(data){
-  //     data.println(getArrayToString(_header, 4));
-  //     data.close();
-  //     Serial.println("File created");
-  //   }else{
-  //     Serial.println("Error open file");
-  //      for(int i = 0; i < 5; i++){
-  //     display.setBrightness(5, true);
-  //     display.setSegments(SEG_ERROR);
-  //     delay(50);
-  //     display.setBrightness(0, false);
-  //     display.setSegments(SEG_ERROR);
-  //     delay(50);
-  //     }
-  //   display.setBrightness(5, true);
-  //   display.setSegments(SEG_ERROR);
-  //   }
-  // }
   led_status.off();
   Serial.println(getArrayToString(_header, 4));
   Serial.println("Setup complete");
@@ -214,9 +193,7 @@ void loop() {
     Serial.println("Data 01 : " + _data_01);
     Serial.println("Data 03 : " + _data_03);
     Serial.println("Data 04 : " + _data_04);
-    // saveFile();
     String sa = _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04;
-    // Serial.println("Writing to data file...  : "+  _data_01 + "," + _data_02 + "," + _data_03 + "," + _data_04);
     File dataFile = SD.open(filename, FILE_WRITE);
     if (dataFile) {
       
@@ -291,12 +268,6 @@ void mainMenu() {
             date = time.date;
             month = time.mon;
             year = time.year;
-            // Serial.print("Date : ");
-            // Serial.println(date);
-            // Serial.print("Month : ");
-            // Serial.println(month);
-            // Serial.print("Year : ");
-            // Serial.println(year);
             current_mode[2] += 1;
             // Serial.print("CUrr : ");
             Serial.println(current_mode[2]);

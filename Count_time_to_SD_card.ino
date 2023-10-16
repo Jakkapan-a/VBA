@@ -88,7 +88,7 @@ void isSensorStopRelease();
 TcBUTTON sensor_stop(SENSOR_STOP, isSensorStopPress, isSensorStopRelease);
 // LED
 #define LED_STATUS 9  // 9
-TcPINOUT led_status(LED_STATUS, true);
+TcPINOUT led_status(LED_STATUS, false);
 
 // Variable
 String _header[4]{ "Date", "TimeStart", "TimeEnd", "Time Total(Sec)" };

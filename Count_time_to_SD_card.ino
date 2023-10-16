@@ -258,11 +258,12 @@ void mainMenu() {
   switch (current_mode[0]) {
     case 0:
       // Normal mode
-      //
+      // display.showNumberDec(0, false, 4, 0);
       break;
     case 1:
       // F001 Mode Setting Date Time
       // SubMenu
+
       switch (current_mode[1]) {
         case 0:
           // 0 DATE
@@ -307,6 +308,12 @@ void mainMenu() {
             hou = time.hour;
             minute = time.min;
             second = time.sec;
+            // Serial.print("h : ");
+            // Serial.println(hou);
+            // Serial.print("Minute : ");
+            // Serial.println(minute);
+            // Serial.print("Second : ");
+            // Serial.println(second);
             current_mode[2] += 1;
             display.clear();
           } else
@@ -538,10 +545,3 @@ String getArrayToString(String arr[], int size) {
   }
   return str;
 }
-
-// void saveFile() {
-//   time = rtc.getTime();
-//   String filename = "D" + String(time.year) + String(time.mon) + String(time.date) + ".txt";
-//   // If file exists, append to it otherwise create a new file add header
-//   // dataFile.close();
-// }
